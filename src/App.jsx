@@ -1,28 +1,88 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import clsx from 'clsx';
+import { getKoders, createKoder, deleteKoder } from './api'
+import { Toaster, toast } from 'sonner';
+
 
 export default function App() {
-  const [dataInfo, setDataInfo] = useState([])
+  const [koders, setKoders] = useState([])
+  
+  //?recibe 2 parametros
+  //? 1. Una funcion / ca;;back
+  //? 2/ Un arreglo de dependencias
+  //? useEffect se usa para ejecutar codigo en partes especificas del ciclo de vida de un componente
+
+  //?useEffect se ejecuta en 2 momentos
+  //?1 cuando el componente se renderiza por primera vez
+  //?2 cuando alguna de sus dependencias cambia
+  useEffect(() => {
+    console.log("Hola desde useEffect")
+    getKoders()
+    .then((koders) =>  {
+      console.log("koders", koders)
+    })
+    .catch((error) => {
+      console.error("Error al obtener koders", error)
+      alert("Error al obtener koders")
+    })
+  }, [])
+
+  function onDelete(koderId) {
+    toast.success("Koder eliminado")
+    deleteKoder(koderId)
+    .then(() => {
+      getKoders()
+      .then((koders) => {
+        setKoders(koders)
+      }) 
+    })
+    .catch((error) => {
+      console.error("Error al eliminar koder", error)
+      alert("Error al eliminar koder")
+    })
+
+  }
+
+
 
   const {
     register, 
     handleSubmit,
     reset,
+    setFocus,
     formState: {isValid, isSubmitted, errors}
   } = useForm(); 
 
-  function onSubmit(data){
-    setDataInfo([... dataInfo, data]);
-    reset()
+  async function onSubmit(data){
+    try {
+      await createKoder({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email
+      })
+  
+      const kodersList = await getKoders()
+      setKoders(kodersList)
+      setFocus("firstName")
+      reset()
+      toast.success("Koder creado")
+    } catch (error) {
+      console.error("Error al crear koder", error)
+      alert("Error al crear koder")
+    }
   }
 
-  function removeReg(idxRemove){
-    const newDataInfo = dataInfo.filter((reg, idx)=> idx != idxRemove);
-    setDataInfo(newDataInfo)
-  }
+  // function removeReg(idxRemove){
+  //   const newDataInfo = koders.filter((reg, idx)=> idx != idxRemove);
+  //   setKoders(newDataInfo)
+  // } //Comentario punto de control...
+
+
   return (
+
     <main className='w-full min-h-screen'>
+      <Toaster  richColors position='top-right' />
       <p className='grid  text-white'>Formulario Koders</p>
       <form className='grid grid-rows-3 p-1 gap-5'
       onSubmit={handleSubmit(onSubmit)}
@@ -90,12 +150,12 @@ export default function App() {
 
 <div 
       className="mt-7 font-sans max-w-screen-sm w-full mx-auto flex flex-col justify-center gap-1">
-        {dataInfo.length === 0 && (
-          <p className="text-white/50"> No hay registros</p>
+        {koders.length === 0 && (
+          <p className="text-white/50"> Aun no hay ningun Koder agregado</p>
         )}
         {
-          dataInfo.length > 0 &&
-          dataInfo.map((koder, idx)=>{
+          koders.length > 0 &&
+          koders.map((koder, idx)=>{
             return(
               <div
               key={idx}
@@ -104,7 +164,8 @@ export default function App() {
                   {koder.firstName}{koder.lastName} - {koder.email}
                 </span>
                 <span className="text-red-500 cursor-pointer hover:bg-red-500 hover:text-white rounded-full p-0 size-5 text-center items-center text-sm" 
-                  onClick={()=> removeReg(idx)}>X</span>
+                  onClick={()=> onDelete(koder.id)}
+                  >X</span>
               </div>
             )
           })
